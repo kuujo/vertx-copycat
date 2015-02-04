@@ -43,15 +43,12 @@ import java.util.stream.Collectors;
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
 public class CopycatClusterManager implements ClusterManager {
-  private final String uri;
   private final Copycat copycat;
   private NodeListener listener;
 
-  public CopycatClusterManager(String uri, ClusterConfig cluster) {
-    Objects.requireNonNull(uri);
+  public CopycatClusterManager(ClusterConfig cluster) {
     Objects.requireNonNull(cluster);
-    this.uri = uri;
-    this.copycat = Copycat.create(uri, cluster);
+    this.copycat = Copycat.create(cluster);
   }
 
   @Override
@@ -118,7 +115,7 @@ public class CopycatClusterManager implements ClusterManager {
 
   @Override
   public String getNodeID() {
-    return uri;
+    return copycat.cluster().member().uri();
   }
 
   @Override
