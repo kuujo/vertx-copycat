@@ -18,7 +18,7 @@
 
   <properties>
     <copycat.version>0.5.0-SNAPSHOT</copycat.version>
-    <vertx.version>3.0.0-dev_preview1</vertx.version>
+    <vertx.version>2.1.5</vertx.version>
 
     <maven.source.plugin.version>2.2.1</maven.source.plugin.version>
     <maven.compiler.plugin.version>3.0</maven.compiler.plugin.version>
@@ -75,7 +75,7 @@
     </dependency>
     <dependency>
       <groupId>net.kuujo.copycat</groupId>
-      <artifactId>copycat-vertx3</artifactId>
+      <artifactId>copycat-vertx</artifactId>
       <version>${copycat.version}</version>
     </dependency>
     <dependency>

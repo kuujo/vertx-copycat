@@ -15,10 +15,10 @@
  */
 package net.kuujo.copycat.vertx.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.shareddata.AsyncMap;
+import org.vertx.java.core.AsyncResult;
+import org.vertx.java.core.Handler;
+import org.vertx.java.core.impl.DefaultFutureResult;
+import org.vertx.java.core.spi.cluster.AsyncMap;
 
 /**
  * Copycat asynchronous map.
@@ -43,48 +43,8 @@ public class CopycatAsyncMap<K, V> implements AsyncMap<K, V> {
   }
 
   @Override
-  public void put(K key, V value, long l, Handler<AsyncResult<Void>> resultHandler) {
-    map.put(key, value).whenComplete((result, error) -> handleResult(null, error, resultHandler));
-  }
-
-  @Override
-  public void putIfAbsent(K key, V value, Handler<AsyncResult<V>> resultHandler) {
-    map.putIfAbsent(key, value).whenComplete((result, error) -> handleResult(result, error, resultHandler));
-  }
-
-  @Override
-  public void putIfAbsent(K key, V value, long timeout, Handler<AsyncResult<V>> resultHandler) {
-    map.putIfAbsent(key, value).whenComplete((result, error) -> handleResult(result, error, resultHandler));
-  }
-
-  @Override
-  public void remove(K key, Handler<AsyncResult<V>> resultHandler) {
-    map.remove(key).whenComplete((result, error) -> handleResult(result, error, resultHandler));
-  }
-
-  @Override
-  public void removeIfPresent(K key, V value, Handler<AsyncResult<Boolean>> resultHandler) {
-    map.remove(key).whenComplete((result, error) -> handleResult(result != null, error, resultHandler));
-  }
-
-  @Override
-  public void replace(K key, V value, Handler<AsyncResult<V>> resultHandler) {
-    map.replace(key, value).whenComplete((result, error) -> handleResult(result, error, resultHandler));
-  }
-
-  @Override
-  public void replaceIfPresent(K key, V oldValue, V newValue, Handler<AsyncResult<Boolean>> resultHandler) {
-    map.replace(key, oldValue, newValue).whenComplete((result, error) -> handleResult(result, error, resultHandler));
-  }
-
-  @Override
-  public void clear(Handler<AsyncResult<Void>> resultHandler) {
-    map.clear().whenComplete((result, error) -> handleResult(result, error, resultHandler));
-  }
-
-  @Override
-  public void size(Handler<AsyncResult<Integer>> resultHandler) {
-    map.size().whenComplete((result, error) -> handleResult(result, error, resultHandler));
+  public void remove(K key, Handler<AsyncResult<Void>> resultHandler) {
+    map.remove(key).whenComplete((result, error) -> handleResult(null, error, resultHandler));
   }
 
   /**
@@ -92,9 +52,9 @@ public class CopycatAsyncMap<K, V> implements AsyncMap<K, V> {
    */
   private <T> void handleResult(T result, Throwable error, Handler<AsyncResult<T>> resultHandler) {
     if (error == null) {
-      Future.succeededFuture(result).setHandler(resultHandler);
+      new DefaultFutureResult<T>(result).setHandler(resultHandler);
     } else {
-      Future.<T>failedFuture(error).setHandler(resultHandler);
+      new DefaultFutureResult<T>(error).setHandler(resultHandler);
     }
   }
 

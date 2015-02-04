@@ -15,7 +15,7 @@
  */
 package net.kuujo.copycat.vertx.impl;
 
-import io.vertx.core.spi.cluster.ChoosableIterable;
+import org.vertx.java.core.spi.cluster.ChoosableIterable;
 
 import java.util.Collection;
 import java.util.Iterator;

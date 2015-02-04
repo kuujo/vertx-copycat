@@ -13,32 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.kuujo.copycat.vertx.impl;
+package net.kuujo.copycat.vertx;
 
-import io.vertx.core.shareddata.Lock;
-import net.kuujo.copycat.collections.AsyncLock;
-
-import java.util.concurrent.ExecutionException;
+import org.vertx.java.core.spi.VertxSPI;
+import org.vertx.java.core.spi.cluster.ClusterManager;
+import org.vertx.java.core.spi.cluster.ClusterManagerFactory;
 
 /**
- * Copycat lock.
+ * Copycat cluster manager factory.
  *
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
-public class CopycatLock implements Lock {
-  private final AsyncLock lock;
-
-  public CopycatLock(AsyncLock lock) {
-    this.lock = lock;
-  }
+public class CopycatClusterManagerFactory implements ClusterManagerFactory {
 
   @Override
-  public void release() {
-    try {
-      lock.unlock().get();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e);
-    }
+  public ClusterManager createClusterManager(VertxSPI vertx) {
+    return new CopycatClusterManager(vertx);
   }
 
 }

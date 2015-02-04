@@ -15,21 +15,17 @@
  */
 package net.kuujo.copycat.vertx;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.shareddata.AsyncMap;
-import io.vertx.core.shareddata.Counter;
-import io.vertx.core.shareddata.Lock;
-import io.vertx.core.spi.cluster.AsyncMultiMap;
-import io.vertx.core.spi.cluster.ClusterManager;
-import io.vertx.core.spi.cluster.NodeListener;
-import io.vertx.core.spi.cluster.VertxSPI;
 import net.kuujo.copycat.Copycat;
-import net.kuujo.copycat.cluster.ClusterConfig;
 import net.kuujo.copycat.cluster.Member;
 import net.kuujo.copycat.cluster.MembershipEvent;
-import net.kuujo.copycat.vertx.impl.*;
+import net.kuujo.copycat.vertx.impl.CopycatAsyncMap;
+import net.kuujo.copycat.vertx.impl.CopycatAsyncMultiMap;
+import net.kuujo.copycat.vertx.impl.CopycatMap;
+import org.vertx.java.core.spi.VertxSPI;
+import org.vertx.java.core.spi.cluster.AsyncMap;
+import org.vertx.java.core.spi.cluster.AsyncMultiMap;
+import org.vertx.java.core.spi.cluster.ClusterManager;
+import org.vertx.java.core.spi.cluster.NodeListener;
 
 import java.util.List;
 import java.util.Map;
@@ -43,40 +39,30 @@ import java.util.stream.Collectors;
  * @author <a href="http://github.com/kuujo">Jordan Halterman</a>
  */
 public class CopycatClusterManager implements ClusterManager {
-  private final String uri;
   private final Copycat copycat;
   private NodeListener listener;
 
-  public CopycatClusterManager(String uri, ClusterConfig cluster) {
-    Objects.requireNonNull(uri);
-    Objects.requireNonNull(cluster);
-    this.uri = uri;
-    this.copycat = Copycat.create(uri, cluster);
+  public CopycatClusterManager(VertxSPI vertx) {
+    Objects.requireNonNull(vertx);
+    this.copycat = Copycat.create();
   }
 
   @Override
-  public void setVertx(VertxSPI vertx) {
-    // We don't need to use the blocking API since Copycat is asynchronous.
+  public <K, V> AsyncMultiMap<K, V> getAsyncMultiMap(String name) {
+    try {
+      return new CopycatAsyncMultiMap<>(copycat.<K, V>multiMap(name).open().get());
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
-  public <K, V> void getAsyncMultiMap(String name, Handler<AsyncResult<AsyncMultiMap<K, V>>> resultHandler) {
-    copycat.<K, V>multiMap(name).open().whenComplete((result, error) -> {
-      if (error == null) {
-        Future.<AsyncMultiMap<K, V>>succeededFuture(new CopycatAsyncMultiMap<>(result)).setHandler(resultHandler);
-      } else {
-        Future.<AsyncMultiMap<K, V>>failedFuture(error).setHandler(resultHandler);
-      }
-    });
-  }
-
-  @Override
-  public <K, V> void getAsyncMap(String name, Handler<AsyncResult<AsyncMap<K, V>>> resultHandler) {
-    copycat.<K, V>map(name).open().whenComplete((result, error) -> {
-      if (error == null) {
-        Future.<AsyncMap<K, V>>succeededFuture(new CopycatAsyncMap<K, V>(result)).setHandler(resultHandler);
-      }
-    });
+  public <K, V> AsyncMap<K, V> getAsyncMap(String name) {
+    try {
+      return new CopycatAsyncMap<>(copycat.<K, V>map(name).open().get());
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -89,36 +75,8 @@ public class CopycatClusterManager implements ClusterManager {
   }
 
   @Override
-  public void getLockWithTimeout(String name, long timeout, Handler<AsyncResult<Lock>> resultHandler) {
-    copycat.lock(name).open().whenComplete((lock, error) -> {
-      if (error == null) {
-        lock.lock().whenComplete((lockResult, lockError) -> {
-          if (lockError == null) {
-            Future.<Lock>succeededFuture(new CopycatLock(lock)).setHandler(resultHandler);
-          } else {
-            Future.<Lock>failedFuture(lockError).setHandler(resultHandler);
-          }
-        });
-      } else {
-        Future.<Lock>failedFuture(error).setHandler(resultHandler);
-      }
-    });
-  }
-
-  @Override
-  public void getCounter(String name, Handler<AsyncResult<Counter>> resultHandler) {
-    copycat.atomicLong(name).open().whenComplete((counter, error) -> {
-      if (error == null) {
-        Future.<Counter>succeededFuture(new CopycatCounter(counter)).setHandler(resultHandler);
-      } else {
-        Future.<Counter>failedFuture(error).setHandler(resultHandler);
-      }
-    });
-  }
-
-  @Override
   public String getNodeID() {
-    return uri;
+    return copycat.cluster().member().uri();
   }
 
   @Override
@@ -143,32 +101,23 @@ public class CopycatClusterManager implements ClusterManager {
   }
 
   @Override
-  public void join(Handler<AsyncResult<Void>> resultHandler) {
-    copycat.open().whenComplete((result, error) -> {
-      if (error == null) {
-        copycat.cluster().addMembershipListener(this::handleMembershipEvent);
-        Future.<Void>succeededFuture().setHandler(resultHandler);
-      } else {
-        Future.<Void>failedFuture(error).setHandler(resultHandler);
-      }
-    });
+  public synchronized void join() {
+    try {
+      copycat.open().get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+    copycat.cluster().addMembershipListener(this::handleMembershipEvent);
   }
 
   @Override
-  public void leave(Handler<AsyncResult<Void>> resultHandler) {
+  public void leave() {
     copycat.cluster().removeMembershipListener(this::handleMembershipEvent);
-    copycat.close().whenComplete((result, error) -> {
-      if (error == null) {
-        Future.<Void>succeededFuture().setHandler(resultHandler);
-      } else {
-        Future.<Void>failedFuture(error).setHandler(resultHandler);
-      }
-    });
-  }
-
-  @Override
-  public boolean isActive() {
-    return copycat.isOpen();
+    try {
+      copycat.close().get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
 }

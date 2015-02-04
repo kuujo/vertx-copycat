@@ -15,11 +15,11 @@
  */
 package net.kuujo.copycat.vertx.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.spi.cluster.AsyncMultiMap;
-import io.vertx.core.spi.cluster.ChoosableIterable;
+import org.vertx.java.core.AsyncResult;
+import org.vertx.java.core.Handler;
+import org.vertx.java.core.impl.DefaultFutureResult;
+import org.vertx.java.core.spi.cluster.AsyncMultiMap;
+import org.vertx.java.core.spi.cluster.ChoosableIterable;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,9 +40,9 @@ public class CopycatAsyncMultiMap<K, V> implements AsyncMultiMap<K, V> {
   public void add(K k, V v, Handler<AsyncResult<Void>> resultHandler) {
     map.put(k, v).whenComplete((result, error) -> {
       if (error == null) {
-        Future.<Void>succeededFuture().setHandler(resultHandler);
+        new DefaultFutureResult<Void>((Void) null).setHandler(resultHandler);
       } else {
-        Future.<Void>failedFuture(error).setHandler(resultHandler);
+        new DefaultFutureResult<Void>(error).setHandler(resultHandler);
       }
     });
   }
@@ -51,20 +51,20 @@ public class CopycatAsyncMultiMap<K, V> implements AsyncMultiMap<K, V> {
   public void get(K k, Handler<AsyncResult<ChoosableIterable<V>>> resultHandler) {
     map.get(k).whenComplete((result, error) -> {
       if (error == null) {
-        Future.<ChoosableIterable<V>>succeededFuture(new ChoosableCollection<V>(result)).setHandler(resultHandler);
+        new DefaultFutureResult<ChoosableIterable<V>>(new ChoosableCollection<>(result)).setHandler(resultHandler);
       } else {
-        Future.<ChoosableIterable<V>>failedFuture(error).setHandler(resultHandler);
+        new DefaultFutureResult<ChoosableIterable<V>>(error).setHandler(resultHandler);
       }
     });
   }
 
   @Override
-  public void remove(K k, V v, Handler<AsyncResult<Boolean>> resultHandler) {
+  public void remove(K k, V v, Handler<AsyncResult<Void>> resultHandler) {
     map.remove(k, v).whenComplete((result, error) -> {
       if (error == null) {
-        Future.succeededFuture(result).setHandler(resultHandler);
+        new DefaultFutureResult<Void>((Void) null).setHandler(resultHandler);
       } else {
-        Future.<Boolean>failedFuture(error).setHandler(resultHandler);
+        new DefaultFutureResult<Void>(error).setHandler(resultHandler);
       }
     });
   }
@@ -78,15 +78,15 @@ public class CopycatAsyncMultiMap<K, V> implements AsyncMultiMap<K, V> {
           map.remove(entry.getKey(), entry.getValue()).whenComplete((removeResult, removeError) -> {
             if (removeError == null) {
               if (counter.incrementAndGet() == result.size()) {
-                Future.<Void>succeededFuture().setHandler(resultHandler);
+                new DefaultFutureResult<Void>((Void) null).setHandler(resultHandler);
               }
             } else {
-              Future.<Void>failedFuture(removeError).setHandler(resultHandler);
+              new DefaultFutureResult<Void>(removeError).setHandler(resultHandler);
             }
           });
         }
       } else {
-        Future.<Void>failedFuture(error).setHandler(resultHandler);
+        new DefaultFutureResult<Void>(error).setHandler(resultHandler);
       }
     });
   }
